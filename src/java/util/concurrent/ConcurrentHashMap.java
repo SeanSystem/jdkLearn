@@ -2406,10 +2406,13 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
      */
     private final void transfer(Node<K, V>[] tab, Node<K, V>[] nextTab) {
         int n = tab.length, stride;
+        // 这里的目的是让每个 CPU 处理的桶一样多，避免出现迁移任务不均匀的现象
+        // 如果桶较少的话，默认一个 CPU（一个线程）处理 16 个桶，也就是长度为16的时候，扩容的时候只会有一个线程来扩容
         if ((stride = (NCPU > 1) ? (n >>> 3) / NCPU : n) < MIN_TRANSFER_STRIDE)
             stride = MIN_TRANSFER_STRIDE; // subdivide range
         if (nextTab == null) {            // initiating
             try {
+                // 初始化扩容后的table
                 @SuppressWarnings("unchecked")
                 Node<K, V>[] nt = (Node<K, V>[]) new Node<?, ?>[n << 1];
                 nextTab = nt;
@@ -2418,11 +2421,15 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                 return;
             }
             nextTable = nextTab;
+            // 初始化迁移开始的桶下标，从最后的下标开始，从后往前迁移
             transferIndex = n;
         }
         int nextn = nextTab.length;
+        // 扩容阶段中使用的节点，hash为-1
         ForwardingNode<K, V> fwd = new ForwardingNode<K, V>(nextTab);
+        // 扩容范围迁移标识
         boolean advance = true;
+        // 扩容完成标识
         boolean finishing = false; // to ensure sweep before committing nextTab
         for (int i = 0, bound = 0; ; ) {
             Node<K, V> f;
@@ -2437,8 +2444,10 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                 } else if (U.compareAndSwapInt
                         (this, TRANSFERINDEX, nextIndex,
                                 nextBound = (nextIndex > stride ?
-                                        nextIndex - stride : 0))) {
+                                        nextIndex - stride : 0))) { // 为当前线程划分迁移的桶区间
+                    // 迁移结束临界位置
                     bound = nextBound;
+                    // 开始迁移的桶下标
                     i = nextIndex - 1;
                     advance = false;
                 }
@@ -2446,12 +2455,15 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
             if (i < 0 || i >= n || i + n >= nextn) {
                 int sc;
                 if (finishing) {
+                    // 扩容完成，将nextTable清空，table变为扩容后的table
+                    // sizeCtl设置为下次需扩容元素的临界值
                     nextTable = null;
                     table = nextTab;
                     sizeCtl = (n << 1) - (n >>> 1);
                     return;
                 }
                 if (U.compareAndSwapInt(this, SIZECTL, sc = sizeCtl, sc - 1)) {
+                    // 当sc -2 == resizeStamp(n) << RESIZE_STAMP_SHIFT 表示协助扩容全部完成，扩容完成
                     if ((sc - 2) != resizeStamp(n) << RESIZE_STAMP_SHIFT)
                         return;
                     finishing = advance = true;
@@ -2468,6 +2480,7 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                         if (fh >= 0) {
                             int runBit = fh & n;
                             Node<K, V> lastRun = f;
+                            // 找到最后一个不连续的需要迁移或不需要迁移的节点（优化）
                             for (Node<K, V> p = f.next; p != null; p = p.next) {
                                 int b = p.hash & n;
                                 if (b != runBit) {
@@ -2475,6 +2488,7 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                                     lastRun = p;
                                 }
                             }
+                            // runbit == 0表示lastRun（最后一个节点及之后的节点都是不需要迁移的）
                             if (runBit == 0) {
                                 ln = lastRun;
                                 hn = null;
@@ -2487,8 +2501,10 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                                 K pk = p.key;
                                 V pv = p.val;
                                 if ((ph & n) == 0)
+                                    // 拼接不需要迁移的节点链表
                                     ln = new Node<K, V>(ph, pk, pv, ln);
                                 else
+                                    // 拼接需要迁移的节点链表
                                     hn = new Node<K, V>(ph, pk, pv, hn);
                             }
                             setTabAt(nextTab, i, ln);
