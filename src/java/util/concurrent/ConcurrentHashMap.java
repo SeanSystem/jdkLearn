@@ -968,6 +968,8 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                 if ((ek = e.key) == key || (ek != null && key.equals(ek)))
                     return e.val;
             } else if (eh < 0)
+                // eh < 0时，表明节点是树型节点或table正在扩容中，使用node的find方法查找元素
+                // TreeNode、TreeBin、ForwardingNode分别重写了Node中的find方法
                 return (p = e.find(h, key)) != null ? p.val : null;
             while ((e = e.next) != null) {
                 if (e.hash == h &&
