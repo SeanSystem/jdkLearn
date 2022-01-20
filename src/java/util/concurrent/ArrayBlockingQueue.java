@@ -91,6 +91,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
     private static final long serialVersionUID = -817911632652898426L;
 
     /** The queued items */
+    // 存储队列值
     final Object[] items;
 
     /** items index for next take, poll, peek or remove */
@@ -162,7 +163,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         if (++putIndex == items.length)
             putIndex = 0;
         count++;
-        notEmpty.signal();
+        notEmpty.signal(); // 唤醒等待take元素的线程
     }
 
     /**
@@ -181,7 +182,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         count--;
         if (itrs != null)
             itrs.elementDequeued();
-        notFull.signal();
+        notFull.signal(); // 唤醒等待put的线程
         return x;
     }
 
@@ -321,6 +322,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
      *
      * @throws NullPointerException if the specified element is null
      */
+    // 添加元素，如果队列满了立即返回false
     public boolean offer(E e) {
         checkNotNull(e);
         final ReentrantLock lock = this.lock;
@@ -349,7 +351,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         final ReentrantLock lock = this.lock;
         lock.lockInterruptibly();
         try {
-            while (count == items.length)
+            while (count == items.length) // 当队列慢时，阻塞当前put操作
                 notFull.await();
             enqueue(e);
         } finally {
@@ -385,6 +387,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         }
     }
 
+    // 当元素为空时立即返回null
     public E poll() {
         final ReentrantLock lock = this.lock;
         lock.lock();
@@ -399,7 +402,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         final ReentrantLock lock = this.lock;
         lock.lockInterruptibly();
         try {
-            while (count == 0)
+            while (count == 0) // 当队列为空时，阻塞
                 notEmpty.await();
             return dequeue();
         } finally {

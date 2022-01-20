@@ -119,6 +119,7 @@ public class PriorityQueue<E> extends AbstractQueue<E>
      * {@linkplain Comparable natural ordering}.
      */
     public PriorityQueue() {
+        // 如果没有指定队列元素比较器，队列元素对象需要实现Comparable接口
         this(DEFAULT_INITIAL_CAPACITY, null);
     }
 
@@ -145,6 +146,7 @@ public class PriorityQueue<E> extends AbstractQueue<E>
      * @since 1.8
      */
     public PriorityQueue(Comparator<? super E> comparator) {
+        // 支持传入队列比较器
         this(DEFAULT_INITIAL_CAPACITY, comparator);
     }
 
@@ -291,6 +293,8 @@ public class PriorityQueue<E> extends AbstractQueue<E>
     private void grow(int minCapacity) {
         int oldCapacity = queue.length;
         // Double size if small; else grow by 50%
+        // 队列扩容，当旧队列容量小于64时，扩容为原队列 2倍+2 容量
+        // 64时，扩容为原队列1.5倍大小
         int newCapacity = oldCapacity + ((oldCapacity < 64) ?
                                          (oldCapacity + 2) :
                                          (oldCapacity >> 1));

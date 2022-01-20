@@ -2375,7 +2375,7 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
         while ((sc = sizeCtl) >= 0) {
             Node<K, V>[] tab = table;
             int n;
-            if (tab == null || (n = tab.length) == 0) {
+            if (tab == null || (n = tab.length) == 0) { // table未初始化，进行初始化操作
                 n = (sc > c) ? sc : c;
                 if (U.compareAndSwapInt(this, SIZECTL, sc, -1)) {
                     try {
@@ -2389,20 +2389,23 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                         sizeCtl = sc;
                     }
                 }
-            } else if (c <= sc || n >= MAXIMUM_CAPACITY)
+            } else if (c <= sc || n >= MAXIMUM_CAPACITY) // 未达到扩容临界值或超过最大长度，不进行扩容
                 break;
             else if (tab == table) {
                 int rs = resizeStamp(n);
-                if (sc < 0) {
+                if (sc < 0) { // 扩容中
                     Node<K, V>[] nt;
                     if ((sc >>> RESIZE_STAMP_SHIFT) != rs || sc == rs + 1 ||
                             sc == rs + MAX_RESIZERS || (nt = nextTable) == null ||
                             transferIndex <= 0)
+                        // 已扩容完成
                         break;
                     if (U.compareAndSwapInt(this, SIZECTL, sc, sc + 1))
+                        // 协助扩容
                         transfer(tab, nt);
                 } else if (U.compareAndSwapInt(this, SIZECTL, sc,
                         (rs << RESIZE_STAMP_SHIFT) + 2))
+                    // 开始扩容
                     transfer(tab, null);
             }
         }
