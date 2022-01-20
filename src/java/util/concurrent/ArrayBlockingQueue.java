@@ -109,6 +109,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
      */
 
     /** Main lock guarding all access */
+    // put和take共用一把锁
     final ReentrantLock lock;
 
     /** Condition for waiting takes */
