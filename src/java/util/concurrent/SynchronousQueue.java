@@ -641,6 +641,8 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
          * Puts or takes an item.
          */
         @SuppressWarnings("unchecked")
+        // 公平方式实现put及take队列元素
+        // 每次从尾开始匹配，但是从头开始唤醒
         E transfer(E e, boolean timed, long nanos) {
             /* Basic algorithm is to loop trying to take either of
              * two actions:
@@ -676,6 +678,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                 if (t == null || h == null)         // saw uninitialized value
                     continue;                       // spin
 
+                // 当队列为空或跟上一个节点是相同的操作时
                 if (h == t || t.isData == isData) { // empty or same-mode
                     QNode tn = t.next;
                     if (t != tail)                  // inconsistent read
@@ -687,12 +690,12 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                     if (timed && nanos <= 0)        // can't wait
                         return null;
                     if (s == null)
-                        s = new QNode(e, isData);
+                        s = new QNode(e, isData); // 创建节点
                     if (!t.casNext(null, s))        // failed to link in
                         continue;
 
                     advanceTail(t, s);              // swing tail and wait
-                    Object x = awaitFulfill(s, e, timed, nanos);
+                    Object x = awaitFulfill(s, e, timed, nanos); // 阻塞put或take
                     if (x == s) {                   // wait was cancelled
                         clean(t, s);
                         return null;
