@@ -545,7 +545,7 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         lock.lockInterruptibly();
         E result;
         try {
-            while ( (result = dequeue()) == null)
+            while ( (result = dequeue()) == null) // 队列为空，阻塞
                 notEmpty.await();
         } finally {
             lock.unlock();

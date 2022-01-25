@@ -34,7 +34,9 @@
  */
 
 package java.util.concurrent;
+
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.*;
@@ -63,14 +65,16 @@ import java.util.*;
  * <a href="{@docRoot}/../technotes/guides/collections/index.html">
  * Java Collections Framework</a>.
  *
- * @since 1.5
- * @author Doug Lea
  * @param <E> the type of elements held in this collection
+ * @author Doug Lea
+ * @since 1.5
  */
 public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
-    implements BlockingQueue<E> {
+        implements BlockingQueue<E> {
 
     private final transient ReentrantLock lock = new ReentrantLock();
+    // 内部采用优先级队列实现元素存取
+    // 存取元素需要实现Delayed接口
     private final PriorityQueue<E> q = new PriorityQueue<E>();
 
     /**
@@ -89,6 +93,11 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
      * signalled.  So waiting threads must be prepared to acquire
      * and lose leadership while waiting.
      */
+
+    /* 当一个线程变成
+     * 领导者，它只等待下一个延迟过去，但是
+     * 其他线程无限期等待
+     */
     private Thread leader = null;
 
     /**
@@ -101,7 +110,8 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
     /**
      * Creates a new {@code DelayQueue} that is initially empty.
      */
-    public DelayQueue() {}
+    public DelayQueue() {
+    }
 
     /**
      * Creates a {@code DelayQueue} initially containing the elements of the
@@ -109,7 +119,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
      *
      * @param c the collection of elements to initially contain
      * @throws NullPointerException if the specified collection or any
-     *         of its elements are null
+     *                              of its elements are null
      */
     public DelayQueue(Collection<? extends E> c) {
         this.addAll(c);
@@ -140,6 +150,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
             q.offer(e);
             if (q.peek() == e) {
                 leader = null;
+                // 添加元素成功并且是下个出队元素，唤醒等待获取元素线程
                 available.signal();
             }
             return true;
@@ -163,9 +174,9 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
      * Inserts the specified element into this delay queue. As the queue is
      * unbounded this method will never block.
      *
-     * @param e the element to add
+     * @param e       the element to add
      * @param timeout This parameter is ignored as the method never blocks
-     * @param unit This parameter is ignored as the method never blocks
+     * @param unit    This parameter is ignored as the method never blocks
      * @return {@code true}
      * @throws NullPointerException {@inheritDoc}
      */
@@ -178,7 +189,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
      * if this queue has no elements with an expired delay.
      *
      * @return the head of this queue, or {@code null} if this
-     *         queue has no elements with an expired delay
+     * queue has no elements with an expired delay
      */
     public E poll() {
         final ReentrantLock lock = this.lock;
@@ -205,18 +216,19 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
         final ReentrantLock lock = this.lock;
         lock.lockInterruptibly();
         try {
-            for (;;) {
+            for (; ; ) {
                 E first = q.peek();
                 if (first == null)
                     available.await();
                 else {
                     long delay = first.getDelay(NANOSECONDS);
-                    if (delay <= 0)
+                    if (delay <= 0) // 队列元素延迟时间到达，直接获取
                         return q.poll();
                     first = null; // don't retain ref while waiting
+                    // 有其它线程等待获取，直接阻塞
                     if (leader != null)
                         available.await();
-                    else {
+                    else { // 获取的队列元素未到达延迟时间，将当前线程设为leader，设置阻塞时间为元素delay时间
                         Thread thisThread = Thread.currentThread();
                         leader = thisThread;
                         try {
@@ -241,8 +253,8 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
      * or the specified wait time expires.
      *
      * @return the head of this queue, or {@code null} if the
-     *         specified waiting time elapses before an element with
-     *         an expired delay becomes available
+     * specified waiting time elapses before an element with
+     * an expired delay becomes available
      * @throws InterruptedException {@inheritDoc}
      */
     public E poll(long timeout, TimeUnit unit) throws InterruptedException {
@@ -250,7 +262,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
         final ReentrantLock lock = this.lock;
         lock.lockInterruptibly();
         try {
-            for (;;) {
+            for (; ; ) {
                 E first = q.peek();
                 if (first == null) {
                     if (nanos <= 0)
@@ -294,7 +306,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
      * if one exists.
      *
      * @return the head of this queue, or {@code null} if this
-     *         queue is empty
+     * queue is empty
      */
     public E peek() {
         final ReentrantLock lock = this.lock;
@@ -324,7 +336,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
         // assert lock.isHeldByCurrentThread();
         E first = q.peek();
         return (first == null || first.getDelay(NANOSECONDS) > 0) ?
-            null : first;
+                null : first;
     }
 
     /**
@@ -342,7 +354,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
         lock.lock();
         try {
             int n = 0;
-            for (E e; (e = peekExpired()) != null;) {
+            for (E e; (e = peekExpired()) != null; ) {
                 c.add(e);       // In this order, in case add() throws.
                 q.poll();
                 ++n;
@@ -370,7 +382,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
         lock.lock();
         try {
             int n = 0;
-            for (E e; n < maxElements && (e = peekExpired()) != null;) {
+            for (E e; n < maxElements && (e = peekExpired()) != null; ) {
                 c.add(e);       // In this order, in case add() throws.
                 q.poll();
                 ++n;
@@ -452,7 +464,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
      * allocated array of {@code Delayed}:
      *
      * <pre> {@code Delayed[] a = q.toArray(new Delayed[0]);}</pre>
-     *
+     * <p>
      * Note that {@code toArray(new Object[0])} is identical in function to
      * {@code toArray()}.
      *
@@ -460,9 +472,9 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
      *          be stored, if it is big enough; otherwise, a new array of the
      *          same runtime type is allocated for this purpose
      * @return an array containing all of the elements in this queue
-     * @throws ArrayStoreException if the runtime type of the specified array
-     *         is not a supertype of the runtime type of every element in
-     *         this queue
+     * @throws ArrayStoreException  if the runtime type of the specified array
+     *                              is not a supertype of the runtime type of every element in
+     *                              this queue
      * @throws NullPointerException if the specified array is null
      */
     public <T> T[] toArray(T[] a) {
@@ -524,6 +536,9 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
     /**
      * Snapshot iterator that works off copy of underlying q array.
      */
+    /**
+     *  创建迭代器时，获取当前队列元素的快照转成数组进行迭代
+     */
     private class Itr implements Iterator<E> {
         final Object[] array; // Array of all elements
         int cursor;           // index of next element to return
@@ -543,7 +558,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
             if (cursor >= array.length)
                 throw new NoSuchElementException();
             lastRet = cursor;
-            return (E)array[cursor++];
+            return (E) array[cursor++];
         }
 
         public void remove() {

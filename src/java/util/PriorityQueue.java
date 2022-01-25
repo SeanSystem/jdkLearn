@@ -559,6 +559,8 @@ public class PriorityQueue<E> extends AbstractQueue<E>
                 else {
                     if (forgetMeNot == null)
                         forgetMeNot = new ArrayDeque<>();
+                    // 调用remove方法后，堆结构发生变化，后面未迭代的元素可能跑到前面去了
+                    // 这部分元素加入forgetMeNot中，保证能被迭代到
                     forgetMeNot.add(moved);
                 }
             } else if (lastRetElt != null) {
