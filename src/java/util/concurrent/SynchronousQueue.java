@@ -325,6 +325,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
          * Puts or takes an item.
          */
         @SuppressWarnings("unchecked")
+        // 非公平方式采用的是栈方式，采取先入后出的方式
         E transfer(E e, boolean timed, long nanos) {
             /*
              * Basic algorithm is to loop trying one of three actions:
@@ -380,7 +381,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                                 break;              // restart main loop
                             }
                             SNode mn = m.next;
-                            if (m.tryMatch(s)) {
+                            if (m.tryMatch(s)) { // 从栈顶开始匹配，成功唤醒栈顶线程
                                 casHead(s, mn);     // pop both s and m
                                 return (E) ((mode == REQUEST) ? m.item : s.item);
                             } else                  // lost match
