@@ -422,6 +422,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * derived -- it works pretty well across a variety of processors,
      * numbers of CPUs, and OSes.
      */
+    // 作为第一个等待节点在阻塞之前的自旋次数
     private static final int FRONT_SPINS   = 1 << 7;
 
     /**
@@ -431,6 +432,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * base average frequency for yielding during spins. Must be a
      * power of two.
      */
+    // 前驱节点正在处理，当前节点在阻塞之前的自旋次数
     private static final int CHAINED_SPINS = FRONT_SPINS >>> 1;
 
     /**
@@ -605,6 +607,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * @throws NullPointerException if haveData mode but e is null
      */
     private E xfer(E e, boolean haveData, int how, long nanos) {
+        // put操作且e为空（值为空）抛出空指针异常
         if (haveData && (e == null))
             throw new NullPointerException();
         Node s = null;                        // the node to append, if needed
@@ -615,35 +618,49 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
             for (Node h = head, p = h; p != null;) { // find & match first node
                 boolean isData = p.isData;
                 Object item = p.item;
+                // 判断节点是否匹配
+                // item != null，1. 节点为put操作且未匹配过 2. 节点为take操作，且已匹配过
+                // (item != null) == isData, 1. 节点为put操作且未匹配过 2. 节点为take操作且未匹配过
+                // 综合：判断节点是否匹配过，未匹配过进行匹配
                 if (item != p && (item != null) == isData) { // unmatched
+                    // 当前节点与比较节点操作相同，不能匹配
                     if (isData == haveData)   // can't match
                         break;
+                    // 匹配成功修改节点值
                     if (p.casItem(item, e)) { // match
                         for (Node q = p; q != h;) {
                             Node n = q.next;  // update by 2 unless singleton
+                            // 更新匹配中的节点的后一个节点为head
                             if (head == h && casHead(h, n == null ? q : n)) {
+                                // 头节点自连接（next指向自身），便于回收
                                 h.forgetNext();
                                 break;
                             }                 // advance and retry
+
+
                             if ((h = head)   == null ||
                                 (q = h.next) == null || !q.isMatched())
                                 break;        // unless slack < 2
                         }
+                        // 唤醒当前节点等待线程
                         LockSupport.unpark(p.waiter);
                         return LinkedTransferQueue.<E>cast(item);
                     }
                 }
+                // 寻找下一个未匹配节点
                 Node n = p.next;
                 p = (p != n) ? n : (h = head); // Use head if p offlist
             }
-
+            // 没有匹配上情况
             if (how != NOW) {                 // No matches available
                 if (s == null)
                     s = new Node(e, haveData);
+                // 没有匹配节点，添加新节点
                 Node pred = tryAppend(s, haveData);
                 if (pred == null)
                     continue retry;           // lost race vs opposite mode
                 if (how != ASYNC)
+                    // 不是put offer add 操作的线程需要进行自旋或阻塞
                     return awaitMatch(s, pred, e, (how == TIMED), nanos);
             }
             return e; // not waiting
