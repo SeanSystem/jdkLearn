@@ -637,7 +637,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                                 break;
                             }                 // advance and retry
 
-
+                            // 当cast head失败后，当松弛度(head距离最远未匹配的节点距离)小于2时不会进行重试更新head
                             if ((h = head)   == null ||
                                 (q = h.next) == null || !q.isMatched())
                                 break;        // unless slack < 2
@@ -722,35 +722,44 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
 
         for (;;) {
             Object item = s.item;
+            // 其他线程匹配了该节点
             if (item != e) {                  // matched
                 // assert item != s;
+                // 撤销节点，返回匹配值
                 s.forgetContents();           // avoid garbage
                 return LinkedTransferQueue.<E>cast(item);
             }
+            // 线程中断
             if ((w.isInterrupted() || (timed && nanos <= 0)) &&
                     s.casItem(e, s)) {        // cancel
+                // 断开节点
                 unsplice(pred, s);
                 return e;
             }
 
             if (spins < 0) {                  // establish spins at/near front
+                // 计算自旋次数
                 if ((spins = spinsFor(pred, s.isData)) > 0)
                     randomYields = ThreadLocalRandom.current();
             }
             else if (spins > 0) {             // spin
                 --spins;
+                // 生成随机数，让出cpu
                 if (randomYields.nextInt(CHAINED_SPINS) == 0)
                     Thread.yield();           // occasionally yield
             }
             else if (s.waiter == null) {
+                // 设置当前线程为等待线程
                 s.waiter = w;                 // request unpark then recheck
             }
             else if (timed) {
                 nanos = deadline - System.nanoTime();
                 if (nanos > 0L)
+                    // 超时阻塞
                     LockSupport.parkNanos(this, nanos);
             }
             else {
+                // 非超时阻塞
                 LockSupport.park(this);
             }
         }
@@ -1070,6 +1079,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * predecessor of s, or null or s itself if s is/was at head
      * @param s the node to be unspliced
      */
+    // 解除节点s和其前继节点的链接
     final void unsplice(Node pred, Node s) {
         s.forgetContents(); // forget unneeded fields
         /*
@@ -1095,6 +1105,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                     if (hn != h && casHead(h, hn))
                         h.forgetNext();  // advance head
                 }
+                // 如果s不能被解除（由于它是尾节点或者pred可能被解除链接，并且pred和s都不是head节点或已经出列），则添加到sweepVotes
                 if (pred.next != pred && s.next != s) { // recheck if offlist
                     for (;;) {           // sweep now if enough votes
                         int v = sweepVotes;
@@ -1103,6 +1114,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                                 break;
                         }
                         else if (casSweepVotes(v, 0)) {
+                            // 当sweepVotes达到阀值时进行大扫除，清除队列中无效节点
                             sweep();
                             break;
                         }
