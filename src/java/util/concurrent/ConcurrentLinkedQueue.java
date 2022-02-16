@@ -329,26 +329,36 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
 
         for (Node<E> t = tail, p = t;;) {
             Node<E> q = p.next;
+            // 寻找队列最后一个节点，q == null表示p为最后一个节点
             if (q == null) {
                 // p is last node
+                // 更新当前节点为队列最后一个节点
                 if (p.casNext(null, newNode)) {
                     // Successful CAS is the linearization point
                     // for e to become an element of this queue,
                     // and for newNode to become "live".
+                    // 当尾节点（tail）不等于最后一个节点时更新tail为当前添加节点
+                    // 这里是为了减少cas更新tail次数，相当于间隔距离两个节点才更新一次
                     if (p != t) // hop two nodes at a time
                         casTail(t, newNode);  // Failure is OK.
                     return true;
                 }
                 // Lost CAS race to another thread; re-read next
             }
+            // 当p出队后
             else if (p == q)
                 // We have fallen off list.  If tail is unchanged, it
                 // will also be off-list, in which case we need to
                 // jump to head, from which all live nodes are always
                 // reachable.  Else the new tail is a better bet.
+                // 如果tail没有发生变化，p后面的节点可能也将要出队，p跳转到head开始查找最后一个节点
+                // 如果tail发生改变，说明入队了新的元素，从tail开始查找最后节点是更好的选择
                 p = (t != (t = tail)) ? t : head;
             else
                 // Check for tail updates after two hops.
+                // 添加最后一个节点失败
+                // (p != t && t != (t = tail)) 表明tail发生更新，从新的tail开始查找最后一个节点
+                // 否则表明tail未更新，从位置q继续
                 p = (p != t && t != (t = tail)) ? t : q;
         }
     }
@@ -362,17 +372,24 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
                 if (item != null && p.casItem(item, null)) {
                     // Successful CAS is the linearization point
                     // for item to be removed from this queue.
+                    // 当poll元素不是head时才更新head为poll元素的next节点
+                    // 减少cas head次数，相当于间隔距离两个节点才更新一次
                     if (p != h) // hop two nodes at a time
                         updateHead(h, ((q = p.next) != null) ? q : p);
                     return item;
                 }
+                // poll元素失败（当前元素已被取走）并且队列只有一个元素情况
+                // 更改head为p，返回null
                 else if ((q = p.next) == null) {
                     updateHead(h, p);
                     return null;
                 }
+                // poll元素失败（元素已被取走）
+                // p之前为head节点，被poll后next变为自身情况
                 else if (p == q)
                     continue restartFromHead;
                 else
+                    // poll元素失败（当前元素已被取走）,取下个节点
                     p = q;
             }
         }
