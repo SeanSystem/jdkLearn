@@ -907,9 +907,9 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             for (;;) {
                 int wc = workerCountOf(c);
                 if (wc >= CAPACITY ||
-                    wc >= (core ? corePoolSize : maximumPoolSize))
+                    wc >= (core ? corePoolSize : maximumPoolSize)) // 校验是否超过最大线程数或最大线程数
                     return false;
-                if (compareAndIncrementWorkerCount(c))
+                if (compareAndIncrementWorkerCount(c)) // 增加工作线程数
                     break retry;
                 c = ctl.get();  // Re-read ctl
                 if (runStateOf(c) != rs)
@@ -922,6 +922,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         boolean workerAdded = false;
         Worker w = null;
         try {
+            // 创建新的work
             w = new Worker(firstTask);
             final Thread t = w.thread;
             if (t != null) {
@@ -937,6 +938,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                         (rs == SHUTDOWN && firstTask == null)) {
                         if (t.isAlive()) // precheck that t is startable
                             throw new IllegalThreadStateException();
+                        // 添加新的work到works中，并更新largestPoolSize(线程池创建过的最大线程数量)
                         workers.add(w);
                         int s = workers.size();
                         if (s > largestPoolSize)
@@ -947,6 +949,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                     mainLock.unlock();
                 }
                 if (workerAdded) {
+                    // 启动线程，调用Work中的run方法
                     t.start();
                     workerStarted = true;
                 }
@@ -1052,8 +1055,10 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             int wc = workerCountOf(c);
 
             // Are workers subject to culling?
+            // allowCoreThreadTimeOut（核心线程是否需要回收）或线程池中线程超过核心线程数
             boolean timed = allowCoreThreadTimeOut || wc > corePoolSize;
-
+            // 当工作线程数超过最大线程数或线程keepAliveTime内未获取到task，返回null
+            // 返回null即表示当前线程需要被回收
             if ((wc > maximumPoolSize || (timed && timedOut))
                 && (wc > 1 || workQueue.isEmpty())) {
                 if (compareAndDecrementWorkerCount(c))
@@ -1062,6 +1067,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             }
 
             try {
+                // 超过核心线程池的线程或线程池设置allowCoreThreadTimeOut=true时
+                // 会设置等待时间，等待时间到了之后未获取到task的线程会被回收掉
                 Runnable r = timed ?
                     workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS) :
                     workQueue.take();
@@ -1119,11 +1126,15 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      */
     final void runWorker(Worker w) {
         Thread wt = Thread.currentThread();
+        // 先取出work中的task，并清除
         Runnable task = w.firstTask;
         w.firstTask = null;
         w.unlock(); // allow interrupts
         boolean completedAbruptly = true;
         try {
+            // 如果task不为空则直接执行
+            // 如果当前task执行完成，会继续从workQueue(阻塞队列中)取task执行
+            // 当获取不到task时，该Work会被回收
             while (task != null || (task = getTask()) != null) {
                 w.lock();
                 // If pool is stopping, ensure thread is interrupted;
@@ -1139,6 +1150,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                     beforeExecute(wt, task);
                     Throwable thrown = null;
                     try {
+                        // task执行
                         task.run();
                     } catch (RuntimeException x) {
                         thrown = x; throw x;
@@ -1353,7 +1365,9 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
          * and so reject the task.
          */
         int c = ctl.get();
+        // 当线程池中线程数小于corePoolSize时
         if (workerCountOf(c) < corePoolSize) {
+            // 创建新的线程
             if (addWorker(command, true))
                 return;
             c = ctl.get();
