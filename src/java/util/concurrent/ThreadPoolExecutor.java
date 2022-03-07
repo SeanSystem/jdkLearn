@@ -784,6 +784,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         try {
             for (Worker w : workers) {
                 Thread t = w.thread;
+                // w.tryLock相当于判断work是否正在执行中
                 if (!t.isInterrupted() && w.tryLock()) {
                     try {
                         t.interrupt();
@@ -898,6 +899,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             int rs = runStateOf(c);
 
             // Check if queue empty only if necessary.
+            // 当线程池关闭后，不在接受新的task
             if (rs >= SHUTDOWN &&
                 ! (rs == SHUTDOWN &&
                    firstTask == null &&
@@ -1372,6 +1374,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                 return;
             c = ctl.get();
         }
+        // 当线程池中线程数大于corePoolSize时，将task加入等待阻塞队列中
         if (isRunning(c) && workQueue.offer(command)) {
             int recheck = ctl.get();
             if (! isRunning(recheck) && remove(command))
@@ -1380,6 +1383,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                 addWorker(null, false);
         }
         else if (!addWorker(command, false))
+            // 当线程数超过最大线程数时，执行拒绝策略
             reject(command);
     }
 
@@ -1394,12 +1398,16 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      *
      * @throws SecurityException {@inheritDoc}
      */
+    // shutdown方法会将线程池状态更改未SHUTDOWN，不在接受新的task
+    // 已经执行中的work会继续执行，等待执行的work会终止
     public void shutdown() {
         final ReentrantLock mainLock = this.mainLock;
         mainLock.lock();
         try {
             checkShutdownAccess();
+            // 设置线程池状态
             advanceRunState(SHUTDOWN);
+            // 终止等待执行的work
             interruptIdleWorkers();
             onShutdown(); // hook for ScheduledThreadPoolExecutor
         } finally {
@@ -1425,13 +1433,17 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      *
      * @throws SecurityException {@inheritDoc}
      */
+    // shutdownNow方法会将线程池设置未STOP状态，不再接收新的task
+    // 会尝试终止所有work
     public List<Runnable> shutdownNow() {
         List<Runnable> tasks;
         final ReentrantLock mainLock = this.mainLock;
         mainLock.lock();
         try {
             checkShutdownAccess();
+            // 设置线程池状态
             advanceRunState(STOP);
+            // 尝试中断所有work
             interruptWorkers();
             tasks = drainQueue();
         } finally {
@@ -2018,6 +2030,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * unless the executor has been shut down, in which case the task
      * is discarded.
      */
+    // 由当前请求线程直接执行
     public static class CallerRunsPolicy implements RejectedExecutionHandler {
         /**
          * Creates a {@code CallerRunsPolicy}.
@@ -2042,6 +2055,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * A handler for rejected tasks that throws a
      * {@code RejectedExecutionException}.
      */
+    // 线程池默认拒绝策略，抛出RejectedExecutionException异常
     public static class AbortPolicy implements RejectedExecutionHandler {
         /**
          * Creates an {@code AbortPolicy}.
@@ -2066,6 +2080,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * A handler for rejected tasks that silently discards the
      * rejected task.
      */
+    // 拒绝，无任何操作
     public static class DiscardPolicy implements RejectedExecutionHandler {
         /**
          * Creates a {@code DiscardPolicy}.
@@ -2087,6 +2102,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * request and then retries {@code execute}, unless the executor
      * is shut down, in which case the task is discarded.
      */
+    // 从线程池中移除最久未处理的task，再次提交task尝试执行
     public static class DiscardOldestPolicy implements RejectedExecutionHandler {
         /**
          * Creates a {@code DiscardOldestPolicy} for the given executor.
