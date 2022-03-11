@@ -1663,6 +1663,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      *
      * @since 1.6
      */
+    // 当没有task时，设置是否允许核心线程池回收
     public void allowCoreThreadTimeOut(boolean value) {
         if (value && keepAliveTime <= 0)
             throw new IllegalArgumentException("Core threads must have nonzero keep alive times");

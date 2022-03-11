@@ -636,6 +636,9 @@ public class Proxy implements java.io.Serializable {
             /*
              * Generate the specified proxy class.
              */
+            // 生成代理类具体实现方法，设置 sun.misc.ProxyGenerator.saveGeneratedFiles为true 可以将生成的代理类文件保存到
+            // com.sun.proxy包下，生成的代理类继承了Proxy类且实现了被代理对象接口
+            // 代理类构造方法中传入Invocation对象，代理方法执行的为Invocation对象的invoke方法
             byte[] proxyClassFile = ProxyGenerator.generateProxyClass(
                 proxyName, interfaces, accessFlags);
             try {
@@ -716,6 +719,7 @@ public class Proxy implements java.io.Serializable {
         /*
          * Look up or generate the designated proxy class.
          */
+        // 从缓存中查找或生成代理类
         Class<?> cl = getProxyClass0(loader, intfs);
 
         /*
