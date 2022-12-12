@@ -416,6 +416,7 @@ public class Proxy implements java.io.Serializable {
         // If the proxy class defined by the given loader implementing
         // the given interfaces exists, this will simply return the cached copy;
         // otherwise, it will create the proxy class via the ProxyClassFactory
+        // 从缓存中获取代理类，如果缓存中不存在则通过ProxyClassFactory创建
         return proxyClassCache.get(loader, interfaces);
     }
 
@@ -574,7 +575,7 @@ public class Proxy implements java.io.Serializable {
                  */
                 Class<?> interfaceClass = null;
                 try {
-                    interfaceClass = Class.forName(intf.getName(), false, loader);
+                    interfaceClass = Class.forName(intf.getName(), false, loader); // 校验classLoader是否能加载接口
                 } catch (ClassNotFoundException e) {
                 }
                 if (interfaceClass != intf) {
@@ -585,14 +586,14 @@ public class Proxy implements java.io.Serializable {
                  * Verify that the Class object actually represents an
                  * interface.
                  */
-                if (!interfaceClass.isInterface()) {
+                if (!interfaceClass.isInterface()) { // 如果不是接口类则抛出异常
                     throw new IllegalArgumentException(
                         interfaceClass.getName() + " is not an interface");
                 }
                 /*
                  * Verify that this interface is not a duplicate.
                  */
-                if (interfaceSet.put(interfaceClass, Boolean.TRUE) != null) {
+                if (interfaceSet.put(interfaceClass, Boolean.TRUE) != null) { // 如果出现重复接口，抛出异常
                     throw new IllegalArgumentException(
                         "repeated interface: " + interfaceClass.getName());
                 }

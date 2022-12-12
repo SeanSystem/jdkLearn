@@ -709,6 +709,7 @@ public class HashMap<K, V> extends AbstractMap<K, V>
         } else if (oldThr > 0) // initial capacity was placed in threshold
             newCap = oldThr;
         else {               // zero initial threshold signifies using defaults
+            // 当创建HashMap时未指定初始容量的话，默认16，负载因子0.75
             newCap = DEFAULT_INITIAL_CAPACITY;
             newThr = (int) (DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
         }

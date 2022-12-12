@@ -132,6 +132,7 @@ public class ArrayList<E> extends AbstractList<E>
      * empty ArrayList with elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA
      * will be expanded to DEFAULT_CAPACITY when the first element is added.
      */
+    // 存放集合元素数组
     transient Object[] elementData; // non-private to simplify nested class access
 
     /**
@@ -139,6 +140,7 @@ public class ArrayList<E> extends AbstractList<E>
      *
      * @serial
      */
+    // 存入集合中的元素数量
     private int size;
 
     /**
@@ -149,12 +151,12 @@ public class ArrayList<E> extends AbstractList<E>
      *         is negative
      */
     public ArrayList(int initialCapacity) {
-        if (initialCapacity > 0) {
+        if (initialCapacity > 0) { // 指定初始容量大于0，创建初始化容量大小的数组
             this.elementData = new Object[initialCapacity];
             // 未指定初始容量或初始容量为0情况下，空数组
         } else if (initialCapacity == 0) {
             this.elementData = EMPTY_ELEMENTDATA;
-        } else {
+        } else { // 指定的初始容量小于0，抛出异常
             throw new IllegalArgumentException("Illegal Capacity: "+
                                                initialCapacity);
         }
@@ -163,7 +165,7 @@ public class ArrayList<E> extends AbstractList<E>
     /**
      * Constructs an empty list with an initial capacity of ten.
      */
-    public ArrayList() {
+    public ArrayList() { // 未指定初始容量时，先创建一个空数组，真正添加元素时会创建默认初始容量的数组（默认容量大小为 10）
         this.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
     }
 
@@ -177,13 +179,13 @@ public class ArrayList<E> extends AbstractList<E>
      */
     public ArrayList(Collection<? extends E> c) {
         elementData = c.toArray();
-        if ((size = elementData.length) != 0) {
+        if ((size = elementData.length) != 0) { // 如果指定的集合不为空
             // c.toArray might (incorrectly) not return Object[] (see 6260652)
-            if (elementData.getClass() != Object[].class)
-                elementData = Arrays.copyOf(elementData, size, Object[].class);
+            if (elementData.getClass() != Object[].class)  // 指定集合不是Object类型的
+                elementData = Arrays.copyOf(elementData, size, Object[].class); // 复制集合元素到新的Object类型集合中并作为当前集合数组
         } else {
             // replace with empty array.
-            this.elementData = EMPTY_ELEMENTDATA;
+            this.elementData = EMPTY_ELEMENTDATA; // 如果指定的是空集合，使用空数组替代
         }
     }
 
@@ -222,19 +224,19 @@ public class ArrayList<E> extends AbstractList<E>
     }
 
     private void ensureCapacityInternal(int minCapacity) {
-        if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA) {
-            minCapacity = Math.max(DEFAULT_CAPACITY, minCapacity);
+        if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA) { // 如果集合未进行过初始化
+            minCapacity = Math.max(DEFAULT_CAPACITY, minCapacity); // 取默认长度（10）和添加数组最小容量中较大的为最小容量
         }
 
-        ensureExplicitCapacity(minCapacity);
+        ensureExplicitCapacity(minCapacity); // 判断是否需要扩容
     }
 
     private void ensureExplicitCapacity(int minCapacity) {
-        modCount++;
+        modCount++; // 集合修改次数加1
 
         // overflow-conscious code
-        if (minCapacity - elementData.length > 0)
-            grow(minCapacity);
+        if (minCapacity - elementData.length > 0) // 判断集合所需的最小容量是否超过了集合数组长度
+            grow(minCapacity); // 扩容
     }
 
     /**
@@ -243,6 +245,7 @@ public class ArrayList<E> extends AbstractList<E>
      * Attempts to allocate larger arrays may result in
      * OutOfMemoryError: Requested array size exceeds VM limit
      */
+    // 数组最大长度
     private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
     /**
@@ -257,18 +260,19 @@ public class ArrayList<E> extends AbstractList<E>
         int oldCapacity = elementData.length;
         // 新数组扩容为原数组1.5倍
         int newCapacity = oldCapacity + (oldCapacity >> 1);
-        if (newCapacity - minCapacity < 0)
+        if (newCapacity - minCapacity < 0) // 如果旧数组扩容1.5倍后，长度还是小于集合所需的最小容量，新数组长度为数组所需的最小容量长度
             newCapacity = minCapacity;
-        // 超过数组限制最大长度（MAX_ARRAY_SIZE）限制时，扩容为Integer.MAX_VALUE
+        // 扩容后的数组长度超过数组限制的最大长度（MAX_ARRAY_SIZE）限制时
         if (newCapacity - MAX_ARRAY_SIZE > 0)
-            newCapacity = hugeCapacity(minCapacity);
+            newCapacity = hugeCapacity(minCapacity); // 大数组扩容
         // minCapacity is usually close to size, so this is a win:
-        elementData = Arrays.copyOf(elementData, newCapacity);
+        elementData = Arrays.copyOf(elementData, newCapacity); // 将旧数组中元素复制到扩容的新数组中
     }
 
     private static int hugeCapacity(int minCapacity) {
         if (minCapacity < 0) // overflow
             throw new OutOfMemoryError();
+        // 如果集合所需的最小容量长度超过了MAX_ARRAY_SIZE，新数组长度为Integer.MAX_VALUE，未超过为MAX_ARRAY_SIZE
         return (minCapacity > MAX_ARRAY_SIZE) ?
             Integer.MAX_VALUE :
             MAX_ARRAY_SIZE;
