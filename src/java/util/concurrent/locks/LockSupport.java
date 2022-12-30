@@ -172,7 +172,7 @@ public class LockSupport {
     public static void park(Object blocker) {
         Thread t = Thread.currentThread();
         setBlocker(t, blocker);
-        UNSAFE.park(false, 0L);
+        UNSAFE.park(false, 0L); // 挂起线程
         setBlocker(t, null);
     }
 
