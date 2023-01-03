@@ -157,6 +157,12 @@ public class CountDownLatch {
     /**
      * Synchronization control For CountDownLatch.
      * Uses AQS state to represent count.
+     *
+     * CountDownLatch使用的同步器，继承了AQS
+     * 使用state值表示数量
+     *
+     * 重写了 tryAcquireShared、tryReleaseShared，共享式获取/释放锁方法
+     *
      */
     private static final class Sync extends AbstractQueuedSynchronizer {
         private static final long serialVersionUID = 4982264981922014374L;
@@ -165,14 +171,17 @@ public class CountDownLatch {
             setState(count);
         }
 
+        // 获取锁数量方法
         int getCount() {
             return getState();
         }
 
+        // 获取共享锁方法
         protected int tryAcquireShared(int acquires) {
             return (getState() == 0) ? 1 : -1;
         }
 
+        // 释放共享锁方法
         protected boolean tryReleaseShared(int releases) {
             // Decrement count; signal when transition to zero
             for (;;) {
@@ -196,6 +205,7 @@ public class CountDownLatch {
      * @throws IllegalArgumentException if {@code count} is negative
      */
     public CountDownLatch(int count) {
+        // 如果指定的count值小于0则抛出非法参数异常
         if (count < 0) throw new IllegalArgumentException("count < 0");
         this.sync = new Sync(count);
     }
@@ -228,7 +238,7 @@ public class CountDownLatch {
      *         while waiting
      */
     public void await() throws InterruptedException {
-        sync.acquireSharedInterruptibly(1);
+        sync.acquireSharedInterruptibly(1); // 执行AQS中的acquireSharedInterruptibly方法
     }
 
     /**
@@ -288,7 +298,7 @@ public class CountDownLatch {
      * <p>If the current count equals zero then nothing happens.
      */
     public void countDown() {
-        sync.releaseShared(1);
+        sync.releaseShared(1); // 调用AQS的releaseShared方法
     }
 
     /**
