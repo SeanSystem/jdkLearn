@@ -375,14 +375,20 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * below).
      */
     private final AtomicInteger ctl = new AtomicInteger(ctlOf(RUNNING, 0));
-    private static final int COUNT_BITS = Integer.SIZE - 3; // 29
+    private static final int COUNT_BITS = Integer.SIZE - 3; // 29，低29位用于记录线程数
     private static final int CAPACITY   = (1 << COUNT_BITS) - 1; // 2^29 - 1
 
     // runState is stored in the high-order bits
+    // 高3位用于记录线程池状态
+    // 能接受新的任务，并且也能处理阻塞队列中的任务
     private static final int RUNNING    = -1 << COUNT_BITS;
+    // 关闭状态，不再接受新提交的任务，但却可以继续处理阻塞队列中已保存的任务
     private static final int SHUTDOWN   =  0 << COUNT_BITS;
+    // 不能接受新任务，也不处理队列中的任务，会中断正在处理任务的线程
     private static final int STOP       =  1 << COUNT_BITS;
+    // 所有的任务都已终止了，workerCount为0
     private static final int TIDYING    =  2 << COUNT_BITS;
+    // 在terminated()方法执行完进入该状态
     private static final int TERMINATED =  3 << COUNT_BITS;
 
     // Packing and unpacking ctl
