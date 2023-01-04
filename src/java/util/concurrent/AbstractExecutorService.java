@@ -84,6 +84,7 @@ public abstract class AbstractExecutorService implements ExecutorService {
      * @since 1.6
      */
     protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T value) {
+        // 封装为FutureTask
         return new FutureTask<T>(runnable, value);
     }
 
@@ -107,7 +108,9 @@ public abstract class AbstractExecutorService implements ExecutorService {
      * @throws NullPointerException       {@inheritDoc}
      */
     public Future<?> submit(Runnable task) {
+        // 如果提交的task为空，则抛出NPE异常
         if (task == null) throw new NullPointerException();
+        // 将task封装为FutureTask
         RunnableFuture<Void> ftask = newTaskFor(task, null);
         execute(ftask);
         return ftask;

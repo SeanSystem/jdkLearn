@@ -86,6 +86,9 @@ public class Executors {
      * @throws IllegalArgumentException if {@code nThreads <= 0}
      */
     public static ExecutorService newFixedThreadPool(int nThreads) {
+        // 创建固定线程数的线程池，核心线程数和最大线程数都是指定的线程数
+        // 空闲回收时间为0，表示该线程池的核心线程不允许被回收
+        // 使用LinkedBlockingQueue作为阻塞队列且未指定最大容量，表明等待的任务数不限制
         return new ThreadPoolExecutor(nThreads, nThreads,
                                       0L, TimeUnit.MILLISECONDS,
                                       new LinkedBlockingQueue<Runnable>());
@@ -189,6 +192,9 @@ public class Executors {
      * @throws NullPointerException if threadFactory is null
      */
     public static ExecutorService newSingleThreadExecutor(ThreadFactory threadFactory) {
+        // 创建只有一个线程的线程池，核心线程数和最大线程数都是1
+        // 线程空闲存活时间为0，表明线程不会自动回收
+        // 使用LinkedBlockingQueue作为等待队列
         return new FinalizableDelegatedExecutorService
             (new ThreadPoolExecutor(1, 1,
                                     0L, TimeUnit.MILLISECONDS,
@@ -213,6 +219,9 @@ public class Executors {
      * @return the newly created thread pool
      */
     public static ExecutorService newCachedThreadPool() {
+        // 创建可缓存的线程池，核心线程数大小为0，最大线程数为Integer.MAX_VALUE
+        // 线程空闲存活时间为60秒
+        // 使用SynchronousQueue作为等待队列
         return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
                                       60L, TimeUnit.SECONDS,
                                       new SynchronousQueue<Runnable>());

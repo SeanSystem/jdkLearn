@@ -269,9 +269,11 @@ public class ScheduledThreadPoolExecutor
          */
         private void setNextRunTime() {
             long p = period;
-            if (p > 0)
+            if (p > 0) // scheduleAtFixedRate的周期设置为正数，下次执行时间时：(上次执行时间 + 周期时间)
                 time += p;
             else
+                // scheduleWithFixedDelay的周期设置为负数，下次执行时间：(当前时间 + 延迟执行时间)
+                // 使用当前时间则说明下次执行时间等同于： (上次完成时间 + 延迟时间)
                 time = triggerTime(-p);
         }
 
@@ -286,14 +288,14 @@ public class ScheduledThreadPoolExecutor
          * Overrides FutureTask version so as to reset/requeue if periodic.
          */
         public void run() {
-            boolean periodic = isPeriodic();
-            if (!canRunInCurrentRunState(periodic))
-                cancel(false);
-            else if (!periodic)
-                ScheduledFutureTask.super.run();
-            else if (ScheduledFutureTask.super.runAndReset()) {
-                setNextRunTime();
-                reExecutePeriodic(outerTask);
+            boolean periodic = isPeriodic(); // 周期执行标识
+            if (!canRunInCurrentRunState(periodic)) // 判断线程池是否为可执行任务状态
+                cancel(false); // 不可执行，取消当前任务
+            else if (!periodic) // 非周期任务
+                ScheduledFutureTask.super.run(); // 按有返回值方式执行
+            else if (ScheduledFutureTask.super.runAndReset()) { // 无返回值方式执行
+                setNextRunTime(); // 设置下次执行时间
+                reExecutePeriodic(outerTask); // 重新添加任务等待下次执行
             }
         }
     }
@@ -322,16 +324,16 @@ public class ScheduledThreadPoolExecutor
      * @param task the task
      */
     private void delayedExecute(RunnableScheduledFuture<?> task) {
-        if (isShutdown())
+        if (isShutdown()) // 如果线程池关闭了，执行拒绝策略
             reject(task);
         else {
-            super.getQueue().add(task);
+            super.getQueue().add(task); // 将任务加入等待队列中
             if (isShutdown() &&
                 !canRunInCurrentRunState(task.isPeriodic()) &&
                 remove(task))
                 task.cancel(false);
             else
-                ensurePrestart();
+                ensurePrestart(); // 创建工作线程，确保任务有线程可以执行
         }
     }
 
@@ -559,18 +561,19 @@ public class ScheduledThreadPoolExecutor
                                                   long initialDelay,
                                                   long period,
                                                   TimeUnit unit) {
-        if (command == null || unit == null)
+        if (command == null || unit == null) // 提交任务未空或单位为空，抛出NPE
             throw new NullPointerException();
-        if (period <= 0)
+        if (period <= 0) // 周期调度时间小于等于0，抛出非法参数异常
             throw new IllegalArgumentException();
+        // 封装任务为ScheduledFutureTask
         ScheduledFutureTask<Void> sft =
             new ScheduledFutureTask<Void>(command,
                                           null,
-                                          triggerTime(initialDelay, unit),
-                                          unit.toNanos(period));
-        RunnableScheduledFuture<Void> t = decorateTask(command, sft);
+                                          triggerTime(initialDelay, unit), // 触发时间(当前时间 + initialDelay)
+                                          unit.toNanos(period)); // 周期调度时间
+        RunnableScheduledFuture<Void> t = decorateTask(command, sft); // 原样返回了ScheduledFutureTask
         sft.outerTask = t;
-        delayedExecute(t);
+        delayedExecute(t); // 延迟执行
         return t;
     }
 
@@ -1007,11 +1010,11 @@ public class ScheduledThreadPoolExecutor
                 throw new NullPointerException();
             RunnableScheduledFuture<?> e = (RunnableScheduledFuture<?>)x;
             final ReentrantLock lock = this.lock;
-            lock.lock();
+            lock.lock(); // 获取锁
             try {
                 int i = size;
                 if (i >= queue.length)
-                    grow();
+                    grow(); // 队列容量不足进行扩容
                 size = i + 1;
                 if (i == 0) {
                     queue[0] = e;
@@ -1021,7 +1024,7 @@ public class ScheduledThreadPoolExecutor
                 }
                 if (queue[0] == e) {
                     leader = null;
-                    available.signal();
+                    available.signal(); // 唤醒等待获取任务的线程
                 }
             } finally {
                 lock.unlock();
@@ -1071,26 +1074,27 @@ public class ScheduledThreadPoolExecutor
             }
         }
 
+        // 获取队列中的任务方法
         public RunnableScheduledFuture<?> take() throws InterruptedException {
             final ReentrantLock lock = this.lock;
-            lock.lockInterruptibly();
+            lock.lockInterruptibly(); // 加锁
             try {
                 for (;;) {
                     RunnableScheduledFuture<?> first = queue[0];
-                    if (first == null)
+                    if (first == null) // 如果等待队列为空，线程挂起等待
                         available.await();
                     else {
-                        long delay = first.getDelay(NANOSECONDS);
-                        if (delay <= 0)
-                            return finishPoll(first);
+                        long delay = first.getDelay(NANOSECONDS); // 延迟执行时间
+                        if (delay <= 0) // 如果到达执行时间
+                            return finishPoll(first); //返回队列中的第一个任务
                         first = null; // don't retain ref while waiting
-                        if (leader != null)
+                        if (leader != null) // 队列有等待执行的线程
                             available.await();
                         else {
                             Thread thisThread = Thread.currentThread();
-                            leader = thisThread;
+                            leader = thisThread; // 设置当前线程为等待执行线程
                             try {
-                                available.awaitNanos(delay);
+                                available.awaitNanos(delay); // 挂起线程，时间为延迟时间
                             } finally {
                                 if (leader == thisThread)
                                     leader = null;
@@ -1100,7 +1104,7 @@ public class ScheduledThreadPoolExecutor
                 }
             } finally {
                 if (leader == null && queue[0] != null)
-                    available.signal();
+                    available.signal(); // 发生异常情况，队列不为空则唤醒等待获取任务的线程
                 lock.unlock();
             }
         }
