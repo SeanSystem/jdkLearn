@@ -253,7 +253,7 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
      * Creates a {@code ConcurrentLinkedQueue} that is initially empty.
      */
     public ConcurrentLinkedQueue() {
-        head = tail = new Node<E>(null);
+        head = tail = new Node<E>(null); // 创建时初始化一个空节点作为头节点
     }
 
     /**
@@ -324,7 +324,7 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
      * @throws NullPointerException if the specified element is null
      */
     public boolean offer(E e) {
-        checkNotNull(e);
+        checkNotNull(e); // 添加的节点不能为空
         final Node<E> newNode = new Node<E>(e);
 
         for (Node<E> t = tail, p = t;;) {
@@ -345,20 +345,19 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
                 }
                 // Lost CAS race to another thread; re-read next
             }
-            // 当p出队后
-            else if (p == q)
+            else if (p == q) // 当p出队后，p的next指向自身
                 // We have fallen off list.  If tail is unchanged, it
                 // will also be off-list, in which case we need to
                 // jump to head, from which all live nodes are always
                 // reachable.  Else the new tail is a better bet.
-                // 如果tail没有发生变化，p后面的节点可能也将要出队，p跳转到head开始查找最后一个节点
+                // 如果tail没有发生变化(tail可能)，p后面的节点可能也将要出队，p跳转到head开始查找最后一个节点
                 // 如果tail发生改变，说明入队了新的元素，从tail开始查找最后节点是更好的选择
                 p = (t != (t = tail)) ? t : head;
             else
                 // Check for tail updates after two hops.
                 // 添加最后一个节点失败
                 // (p != t && t != (t = tail)) 表明tail发生更新，从新的tail开始查找最后一个节点
-                // 否则表明tail未更新，从位置q继续
+                // 否则表明tail未更新，从位置q继续(当前节点的下一个节点继续)
                 p = (p != t && t != (t = tail)) ? t : q;
         }
     }

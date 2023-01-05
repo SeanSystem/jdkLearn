@@ -160,8 +160,8 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         // assert lock.getHoldCount() == 1;
         // assert items[putIndex] == null;
         final Object[] items = this.items;
-        items[putIndex] = x;
-        if (++putIndex == items.length)
+        items[putIndex] = x; // 添加元素
+        if (++putIndex == items.length) // 下一次添加的数组下表超过数组长度，复位0
             putIndex = 0;
         count++;
         notEmpty.signal(); // 唤醒等待take元素的线程
@@ -350,11 +350,11 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
     public void put(E e) throws InterruptedException {
         checkNotNull(e);
         final ReentrantLock lock = this.lock;
-        lock.lockInterruptibly();
+        lock.lockInterruptibly(); // 加锁
         try {
             while (count == items.length) // 当队列慢时，阻塞当前put操作
                 notFull.await();
-            enqueue(e);
+            enqueue(e); // 添加元素
         } finally {
             lock.unlock();
         }

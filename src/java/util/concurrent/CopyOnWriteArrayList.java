@@ -432,11 +432,11 @@ public class CopyOnWriteArrayList<E>
      */
     public boolean add(E e) {
         final ReentrantLock lock = this.lock;
-        lock.lock();
+        lock.lock(); // 加锁
         try {
             Object[] elements = getArray();
             int len = elements.length;
-            // 向数组写元素时，先复制一个容量为原数组长度加1的新数组，写入完成覆盖就数组
+            // 向数组写元素时，先复制一个容量为原数组长度加1的新数组，写入完成覆盖旧数组
             Object[] newElements = Arrays.copyOf(elements, len + 1);
             newElements[len] = e;
             setArray(newElements);

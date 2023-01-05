@@ -162,6 +162,7 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
 
     /**
      * Lock used for all public operations
+     * 读写元素采用同一个锁
      */
     private final ReentrantLock lock;
 
@@ -286,30 +287,33 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
      * @param oldCap the length of the array
      */
     private void tryGrow(Object[] array, int oldCap) {
-        lock.unlock(); // must release and then re-acquire main lock
+        lock.unlock(); //释放锁，不影响队列的读操作 must release and then re-acquire main lock
         Object[] newArray = null;
         if (allocationSpinLock == 0 &&
             UNSAFE.compareAndSwapInt(this, allocationSpinLockOffset,
-                                     0, 1)) {
+                                     0, 1)) { // 采用CAS修改扩容标识，避免多个线程同时扩容
             try {
+                // 当队列的容量小于64时，扩容后的容量为 (oldCap*2 + 2)
+                // 当队列的容量大于64时，扩容后的容量为 (oldCap*1.5)
                 int newCap = oldCap + ((oldCap < 64) ?
                                        (oldCap + 2) : // grow faster if small
                                        (oldCap >> 1));
-                if (newCap - MAX_ARRAY_SIZE > 0) {    // possible overflow
-                    int minCap = oldCap + 1;
-                    if (minCap < 0 || minCap > MAX_ARRAY_SIZE)
+
+                if (newCap - MAX_ARRAY_SIZE > 0) {    //如果扩容后的容量会超过最大容量限制 possible overflow
+                    int minCap = oldCap + 1; // 扩容容量改为 (oldCap + 1)
+                    if (minCap < 0 || minCap > MAX_ARRAY_SIZE) // 如果还是超过最大容量限制，抛出异常
                         throw new OutOfMemoryError();
                     newCap = MAX_ARRAY_SIZE;
                 }
-                if (newCap > oldCap && queue == array)
-                    newArray = new Object[newCap];
+                if (newCap > oldCap && queue == array) // 新容量大于旧容量且数组未被其它线程扩容
+                    newArray = new Object[newCap]; // 创建新的数组
             } finally {
                 allocationSpinLock = 0;
             }
         }
-        if (newArray == null) // back off if another thread is allocating
+        if (newArray == null) //让出CPU执行权给其它扩容线程执行 back off if another thread is allocating
             Thread.yield();
-        lock.lock();
+        lock.lock(); // 加锁修改数组为扩容后的数组并复制旧数组元素值
         if (newArray != null && queue == array) {
             queue = newArray;
             System.arraycopy(array, 0, newArray, 0, oldCap);
@@ -321,7 +325,7 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
      */
     private E dequeue() {
         int n = size - 1;
-        if (n < 0)
+        if (n < 0) // 队列为空
             return null;
         else {
             Object[] array = queue;
@@ -478,19 +482,20 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         if (e == null)
             throw new NullPointerException();
         final ReentrantLock lock = this.lock;
-        lock.lock();
+        lock.lock(); // 加锁
         int n, cap;
         Object[] array;
-        while ((n = size) >= (cap = (array = queue).length))
-            tryGrow(array, cap);
+        while ((n = size) >= (cap = (array = queue).length)) // 如果队列元素数大于等于当前队列容量
+            tryGrow(array, cap); // 尝试扩容
         try {
             Comparator<? super E> cmp = comparator;
+            // 添加新元素
             if (cmp == null)
                 siftUpComparable(n, e, array);
             else
                 siftUpUsingComparator(n, e, array, cmp);
-            size = n + 1;
-            notEmpty.signal();
+            size = n + 1; // 数组数量加1
+            notEmpty.signal(); // 唤醒等待获取元素的线程
         } finally {
             lock.unlock();
         }
@@ -508,7 +513,7 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
      * @throws NullPointerException if the specified element is null
      */
     public void put(E e) {
-        offer(e); // never need to block
+        offer(e); //put操作非阻塞 never need to block
     }
 
     /**
@@ -542,7 +547,7 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
 
     public E take() throws InterruptedException {
         final ReentrantLock lock = this.lock;
-        lock.lockInterruptibly();
+        lock.lockInterruptibly(); // 加锁
         E result;
         try {
             while ( (result = dequeue()) == null) // 队列为空，阻塞
