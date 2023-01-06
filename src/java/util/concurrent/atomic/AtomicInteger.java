@@ -60,6 +60,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 
     static {
         try {
+            //通过UNSAFE类的objectFieldOffset()方法获取value属性值在内存中的偏移位置
             valueOffset = unsafe.objectFieldOffset
                 (AtomicInteger.class.getDeclaredField("value"));
         } catch (Exception ex) { throw new Error(ex); }
@@ -69,6 +70,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 
     /**
      * Creates a new AtomicInteger with the given initial value.
+     * 给定初始值的构造方法
      *
      * @param initialValue the initial value
      */
@@ -78,6 +80,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 
     /**
      * Creates a new AtomicInteger with initial value {@code 0}.
+     * 未给定初始值，默认为0
      */
     public AtomicInteger() {
     }
@@ -117,6 +120,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
      * @return the previous value
      */
     public final int getAndSet(int newValue) {
+        // getAndSetInt()方法内部采用CAS操作设置值，根据value属性在内存中的起始位置获取到旧的属性值再执行CAS操作
         return unsafe.getAndSetInt(this, valueOffset, newValue);
     }
 

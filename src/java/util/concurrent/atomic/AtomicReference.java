@@ -54,11 +54,13 @@ public class AtomicReference<V> implements java.io.Serializable {
 
     static {
         try {
+            // 获取value属性的偏移地址
             valueOffset = unsafe.objectFieldOffset
                 (AtomicReference.class.getDeclaredField("value"));
         } catch (Exception ex) { throw new Error(ex); }
     }
 
+    // 设置的值
     private volatile V value;
 
     /**

@@ -49,6 +49,7 @@ package java.util.concurrent.atomic;
  */
 public class AtomicMarkableReference<V> {
 
+    // 跟AtomicStampedReference不同的是stamp换成了mark，不能解决CAS的ABA问题
     private static class Pair<T> {
         final T reference;
         final boolean mark;

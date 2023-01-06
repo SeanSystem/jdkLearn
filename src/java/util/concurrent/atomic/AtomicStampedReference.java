@@ -49,6 +49,7 @@ package java.util.concurrent.atomic;
  */
 public class AtomicStampedReference<V> {
 
+    // 用于封装Ref和Stamp的内部类，Stamp可用于当作版本号使用，可以解决CAS的ABA问题
     private static class Pair<T> {
         final T reference;
         final int stamp;

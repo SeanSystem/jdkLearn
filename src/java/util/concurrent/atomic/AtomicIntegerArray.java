@@ -50,6 +50,7 @@ public class AtomicIntegerArray implements java.io.Serializable {
     private static final long serialVersionUID = 2862133569453604235L;
 
     private static final Unsafe unsafe = Unsafe.getUnsafe();
+    // 获取数组第一个元素的偏移地址
     private static final int base = unsafe.arrayBaseOffset(int[].class);
     private static final int shift;
     private final int[] array;
@@ -61,6 +62,7 @@ public class AtomicIntegerArray implements java.io.Serializable {
         shift = 31 - Integer.numberOfLeadingZeros(scale);
     }
 
+    // 检查数组是否越界
     private long checkedByteOffset(int i) {
         if (i < 0 || i >= array.length)
             throw new IndexOutOfBoundsException("index " + i);
@@ -68,6 +70,7 @@ public class AtomicIntegerArray implements java.io.Serializable {
         return byteOffset(i);
     }
 
+    // 获取数组下标的内存偏移位置
     private static long byteOffset(int i) {
         return ((long) i << shift) + base;
     }

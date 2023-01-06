@@ -412,7 +412,7 @@ class Thread implements Runnable {
                 acc != null ? acc : AccessController.getContext();
         this.target = target;
         setPriority(priority);
-        if (parent.inheritableThreadLocals != null)
+        if (parent.inheritableThreadLocals != null) // 如果父线程的inheritableThreadLocals不为空，则将父线程的绑定变量绑定到当前线程中
             this.inheritableThreadLocals =
                 ThreadLocal.createInheritedMap(parent.inheritableThreadLocals);
         /* Stash the specified stack size in case the VM cares */

@@ -467,19 +467,19 @@ public class ThreadLocal<T> {
 
             Entry[] tab = table;
             int len = tab.length;
-            int i = key.threadLocalHashCode & (len-1);
+            int i = key.threadLocalHashCode & (len-1); // 计算存放元素下标
 
             for (Entry e = tab[i];
                  e != null;
-                 e = tab[i = nextIndex(i, len)]) {
+                 e = tab[i = nextIndex(i, len)]) { // 当前位置已存在元素时，向后查找合适的位置
                 ThreadLocal<?> k = e.get();
 
-                if (k == key) {
+                if (k == key) { // 找到相同key的情况，直接用新值替换旧值
                     e.value = value;
                     return;
                 }
 
-                if (k == null) {
+                if (k == null) { // 如果当前位置的值过期了，启动探测回收过期的元素
                     replaceStaleEntry(key, value, i);
                     return;
                 }
@@ -537,15 +537,16 @@ public class ThreadLocal<T> {
             int slotToExpunge = staleSlot;
             for (int i = prevIndex(staleSlot, len);
                  (e = tab[i]) != null;
-                 i = prevIndex(i, len))
-                if (e.get() == null)
+                 i = prevIndex(i, len)) // 从当前位置向前查找回收的起始位置，直到遇到空的槽位
+
+                if (e.get() == null) // 如果发现过期节点，更新探测回收起始位置
                     slotToExpunge = i;
 
             // Find either the key or trailing null slot of run, whichever
             // occurs first
             for (int i = nextIndex(staleSlot, len);
                  (e = tab[i]) != null;
-                 i = nextIndex(i, len)) {
+                 i = nextIndex(i, len)) { // 当前位置已存在元素，向后查找合适的位置存放元素
                 ThreadLocal<?> k = e.get();
 
                 // If we find key, then we need to swap it
@@ -553,15 +554,17 @@ public class ThreadLocal<T> {
                 // The newly stale slot, or any other stale slot
                 // encountered above it, can then be sent to expungeStaleEntry
                 // to remove or rehash all of the other entries in run.
-                if (k == key) {
-                    e.value = value;
+                if (k == key) { // 找到了具有相同key的元素
+                    e.value = value; // 以新值覆盖旧值
 
+                    // 当前位置元素与staleSlot位置元素进行交换
                     tab[i] = tab[staleSlot];
                     tab[staleSlot] = e;
 
                     // Start expunge at preceding stale entry if it exists
-                    if (slotToExpunge == staleSlot)
-                        slotToExpunge = i;
+                    if (slotToExpunge == staleSlot) // 如果向前未查找到过期的元素
+                        slotToExpunge = i; // 将回收起始位置设置未当前位置
+                    // 开始回收过期元素并重新计算元素hash值
                     cleanSomeSlots(expungeStaleEntry(slotToExpunge), len);
                     return;
                 }
@@ -569,16 +572,17 @@ public class ThreadLocal<T> {
                 // If we didn't find stale entry on backward scan, the
                 // first stale entry seen while scanning for key is the
                 // first still present in the run.
-                if (k == null && slotToExpunge == staleSlot)
+                if (k == null && slotToExpunge == staleSlot) // 如果元素过期了，向前未找到过期元素，将探测回收位置设置为当前位置
                     slotToExpunge = i;
             }
 
             // If key not found, put new entry in stale slot
+            // 如果未找到相同key的元素，将新添加的元素添加到stale位置
             tab[staleSlot].value = null;
             tab[staleSlot] = new Entry(key, value);
 
             // If there are any other stale entries in run, expunge them
-            if (slotToExpunge != staleSlot)
+            if (slotToExpunge != staleSlot) // 存在过期元素，进行回收
                 cleanSomeSlots(expungeStaleEntry(slotToExpunge), len);
         }
 
@@ -607,15 +611,15 @@ public class ThreadLocal<T> {
             int i;
             for (i = nextIndex(staleSlot, len);
                  (e = tab[i]) != null;
-                 i = nextIndex(i, len)) {
+                 i = nextIndex(i, len)) { // 向后查找，直到遇到元素为空的位置
                 ThreadLocal<?> k = e.get();
-                if (k == null) {
+                if (k == null) { // 元素过期了，清空当前位置节点
                     e.value = null;
                     tab[i] = null;
                     size--;
                 } else {
                     int h = k.threadLocalHashCode & (len - 1);
-                    if (h != i) {
+                    if (h != i) { // 如果当前元素计算的数组下标不等于当前元素位置下标，从hash计算的下标开始向后查找元素新的存储位置
                         tab[i] = null;
 
                         // Unlike Knuth 6.4 Algorithm R, we must scan until
@@ -653,6 +657,7 @@ public class ThreadLocal<T> {
          *
          * @return true if any stale entries have been removed.
          */
+        // 启发式清理过期元素
         private boolean cleanSomeSlots(int i, int n) {
             boolean removed = false;
             Entry[] tab = table;
